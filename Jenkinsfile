@@ -8,7 +8,7 @@ pipeline {
         disableConcurrentBuilds()
         ansiColor('xterm')
     }
-     environment{
+    environment{
         def appVersion = '' //variable declaration
     }
     stages {
@@ -21,9 +21,8 @@ pipeline {
                 }
             }
         }
-        stages {
-            stage('Install Dependencies') {
-              steps {
+        stage('Install Dependencies') {
+            steps {
                 sh """
                 npm install
                 echo "application version: $appVersion"
