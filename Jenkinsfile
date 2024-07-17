@@ -38,37 +38,76 @@ pipeline {
                 """
             }
         }
-         stage('Nexus Artifact Upload'){
+        stage('Docker build'){
             steps{
-                script{
-                    nexusArtifactUploader(
-                        nexusVersion: 'nexus3',
-                        protocol: 'http',
-                        nexusUrl: "${nexusUrl}",
-                        groupId: 'com.expense',
-                        version: "${appVersion}",
-                        repository: "backend",
-                        credentialsId: 'nexus-auth',
-                        artifacts: [
-                            [artifactId: "backend" ,
-                            classifier: '',
-                            file: "backend-" + "${appVersion}" + '.zip',
-                            type: 'zip']
-                        ]
-                    )
+                sh """
+                    aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
+
+                    docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-backend:${appVersion} .
+
+                    docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-backend:${appVersion}
+                """
+            }
+        }
+
+         
+        /* stage('Sonar Scan'){
+            environment {
+                scannerHome = tool 'sonar-6.0' //referring scanner CLI
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('sonar-6.0') { //referring sonar server
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
                 }
             }
         }
-        stage('Deploy'){
+
+        stage("Quality Gate") {
+            steps {
+              timeout(time: 30, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+        } */
+
+        //  stage('Nexus Artifact Upload'){
+        //     steps{
+        //         script{
+        //             nexusArtifactUploader(
+        //                 nexusVersion: 'nexus3',
+        //                 protocol: 'http',
+        //                 nexusUrl: "${nexusUrl}",
+        //                 groupId: 'com.expense',
+        //                 version: "${appVersion}",
+        //                 repository: "backend",
+        //                 credentialsId: 'nexus-auth',
+        //                 artifacts: [
+        //                     [artifactId: "backend" ,
+        //                     classifier: '',
+        //                     file: "backend-" + "${appVersion}" + '.zip',
+        //                     type: 'zip']
+        //                 ]
+        //             )
+        //         }
+        //     }
+        // }
+        /* stage('Deploy'){
+            when{
+                expression{
+                    params.deploy
+                }
+            }
             steps{
-                script {
+                script{
                     def params = [
                         string(name: 'appVersion', value: "${appVersion}")
                     ]
                     build job: 'backend-deploy', parameters: params, wait: false
                 }
             }
-        }
+        } */
     }
     post { 
         always {  
