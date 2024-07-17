@@ -8,9 +8,14 @@ pipeline {
         disableConcurrentBuilds()
         ansiColor('xterm')
     }
+    parameters{
+        booleanParam(name: 'deploy', defaultValue: false, description: 'Toggle this value')
+    }
     environment{
         def appVersion = '' //variable declaration
-        nexusUrl = 'nexus.akhildev.online:8081'
+        nexusUrl = 'nexus.akhildev.online:8081' 
+        region = "us-east-1"
+        account_id = "891377200013"
     }
     stages {
         stage('read the version'){
