@@ -14,6 +14,8 @@ pipeline {
     environment{
         def appVersion = '' //variable declaration
         nexusUrl = 'nexus.akhildev.online:8081'
+        region = "us-east-1"
+        account_id = "891377200013"
     }
     stages {
         stage('read the version'){
@@ -41,44 +43,7 @@ pipeline {
                 """
             }
         }
-        stage('Nexus Artifact Upload'){
-            steps{
-                script{
-                    nexusArtifactUploader(
-                        nexusVersion: 'nexus3',
-                        protocol: 'http',
-                        nexusUrl: "${nexusUrl}",
-                        groupId: 'com.expense',
-                        version: "${appVersion}",
-                        repository: "backend",
-                        credentialsId: 'nexus-auth',
-                        artifacts: [
-                            [artifactId: "backend" ,
-                            classifier: '',
-                            file: "backend-" + "${appVersion}" + '.zip',
-                            type: 'zip']
-                        ]
-                    )
-                }
-            }
-        }
-        stage('Deploy'){
-            steps{
-                script {
-                    def params = [
-                        string(name: 'appVersion', value: "${appVersion}")
-                    ]
-                    build job: 'backend-deploy', parameters: params, wait: false
-                }
-            }
-        }
-
-        /* --- Container/EKS path (alternate deployment target, see terraform-aws-eks) ---
         stage('Docker build'){
-            environment {
-                region = "us-east-1"
-                account_id = "891377200013"
-            }
             steps{
                 sh """
                     aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
@@ -89,19 +54,18 @@ pipeline {
                 """
             }
         }
-
-        stage('Deploy to EKS'){
+        stage('Deploy'){
             steps{
                 sh """
                     aws eks update-kubeconfig --region us-east-1 --name expense-dev
                     cd helm
                     ls -ltr
                     sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
-                    helm upgrade --install backend .
+                    helm install backend .
                 """
             }
         }
-        */
+
 
         /* stage('Sonar Scan'){
             environment {
@@ -121,6 +85,43 @@ pipeline {
               timeout(time: 30, unit: 'MINUTES') {
                 waitForQualityGate abortPipeline: true
               }
+            }
+        } */
+
+        //  stage('Nexus Artifact Upload'){
+        //     steps{
+        //         script{
+        //             nexusArtifactUploader(
+        //                 nexusVersion: 'nexus3',
+        //                 protocol: 'http',
+        //                 nexusUrl: "${nexusUrl}",
+        //                 groupId: 'com.expense',
+        //                 version: "${appVersion}",
+        //                 repository: "backend",
+        //                 credentialsId: 'nexus-auth',
+        //                 artifacts: [
+        //                     [artifactId: "backend" ,
+        //                     classifier: '',
+        //                     file: "backend-" + "${appVersion}" + '.zip',
+        //                     type: 'zip']
+        //                 ]
+        //             )
+        //         }
+        //     }
+        // }
+        /* stage('Deploy'){
+            when{
+                expression{
+                    params.deploy
+                }
+            }
+            steps{
+                script{
+                    def params = [
+                        string(name: 'appVersion', value: "${appVersion}")
+                    ]
+                    build job: 'backend-deploy', parameters: params, wait: false
+                }
             }
         } */
     }
