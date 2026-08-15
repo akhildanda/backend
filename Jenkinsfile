@@ -13,9 +13,7 @@ pipeline {
     }
     environment{
         def appVersion = '' //variable declaration
-        nexusUrl = 'nexus.akhildev.online:8081' 
-        region = "us-east-1"
-        account_id = "891377200013"
+        nexusUrl = 'nexus.akhildev.online:8081'
     }
     stages {
         stage('read the version'){
@@ -43,7 +41,44 @@ pipeline {
                 """
             }
         }
+        stage('Nexus Artifact Upload'){
+            steps{
+                script{
+                    nexusArtifactUploader(
+                        nexusVersion: 'nexus3',
+                        protocol: 'http',
+                        nexusUrl: "${nexusUrl}",
+                        groupId: 'com.expense',
+                        version: "${appVersion}",
+                        repository: "backend",
+                        credentialsId: 'nexus-auth',
+                        artifacts: [
+                            [artifactId: "backend" ,
+                            classifier: '',
+                            file: "backend-" + "${appVersion}" + '.zip',
+                            type: 'zip']
+                        ]
+                    )
+                }
+            }
+        }
+        stage('Deploy'){
+            steps{
+                script {
+                    def params = [
+                        string(name: 'appVersion', value: "${appVersion}")
+                    ]
+                    build job: 'backend-deploy', parameters: params, wait: false
+                }
+            }
+        }
+
+        /* --- Container/EKS path (alternate deployment target, see terraform-aws-eks) ---
         stage('Docker build'){
+            environment {
+                region = "us-east-1"
+                account_id = "891377200013"
+            }
             steps{
                 sh """
                     aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
@@ -54,19 +89,20 @@ pipeline {
                 """
             }
         }
-        stage('Deploy'){
+
+        stage('Deploy to EKS'){
             steps{
                 sh """
                     aws eks update-kubeconfig --region us-east-1 --name expense-dev
                     cd helm
                     ls -ltr
                     sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
-                    helm install backend .    
+                    helm upgrade --install backend .
                 """
             }
         }
+        */
 
-         
         /* stage('Sonar Scan'){
             environment {
                 scannerHome = tool 'sonar-6.0' //referring scanner CLI
@@ -87,53 +123,16 @@ pipeline {
               }
             }
         } */
-
-        //  stage('Nexus Artifact Upload'){
-        //     steps{
-        //         script{
-        //             nexusArtifactUploader(
-        //                 nexusVersion: 'nexus3',
-        //                 protocol: 'http',
-        //                 nexusUrl: "${nexusUrl}",
-        //                 groupId: 'com.expense',
-        //                 version: "${appVersion}",
-        //                 repository: "backend",
-        //                 credentialsId: 'nexus-auth',
-        //                 artifacts: [
-        //                     [artifactId: "backend" ,
-        //                     classifier: '',
-        //                     file: "backend-" + "${appVersion}" + '.zip',
-        //                     type: 'zip']
-        //                 ]
-        //             )
-        //         }
-        //     }
-        // }
-        /* stage('Deploy'){
-            when{
-                expression{
-                    params.deploy
-                }
-            }
-            steps{
-                script{
-                    def params = [
-                        string(name: 'appVersion', value: "${appVersion}")
-                    ]
-                    build job: 'backend-deploy', parameters: params, wait: false
-                }
-            }
-        } */
     }
-    post { 
-        always {  
+    post {
+        always {
             echo 'I will always say Hello again!'
             deleteDir()
         }
-        success { 
+        success {
             echo 'I will run when pipeline is success'
         }
-        failure { 
+        failure {
             echo 'I will run when pipeline is failure'
         }
     }
